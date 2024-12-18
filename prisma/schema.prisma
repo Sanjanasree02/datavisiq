@@ -1,1 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeature = ["mongodb"]
+}
 
+datasource db {
+  provider     = "mongodb"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model Account {
+  id                String  @id @map("_id") @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @map("_id") @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id            String    @id @map("_id") @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  games         Game[]    // Relation to games
+  accounts      Account[] // Relation to accounts
+  sessions      Session[] // Relation to sessions
+}
+
+enum GameType {
+  mcq
+  open_ended
+}
+
+model Game {
+  id          String     @id @map("_id") @default(cuid())
+  userId      String
+  questions   Question[] // Relation to questions
+  timeStarted DateTime
+  topic       String
+  timeEnded   DateTime?
+  gameType    GameType
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], name: "userId")
+}
+
+model TopicCount {
+  id    String @id @map("_id") @default(cuid())
+  topic String @unique
+  count Int
+}
+
+model Question {
+  id                String   @id @map("_id") @default(cuid())
+  question          String
+  answer            String
+  gameId            String
+  options           Json?    // Only for MCQ questions
+  percentageCorrect Float?   // Only for open-ended questions
+  isCorrect         Boolean? // Only for MCQ questions
+  questionType      GameType
+  userAnswer        String?  // User-provided answer (optional)
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId], name: "gameId")
+}
